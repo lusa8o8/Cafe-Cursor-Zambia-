@@ -1,5 +1,4 @@
 import { getSessionFiles } from '@/lib/session-manager';
-import { get } from '@vercel/blob';
 
 export async function GET(request: Request) {
   const sessionId = request.headers.get('x-session-id');
@@ -17,19 +16,22 @@ export async function GET(request: Request) {
       return Response.json({ error: 'File not found' }, { status: 404 });
     }
 
-    // Fetch file from private blob storage
-    const blob = await get(file.blobUrl);
+    // Fetch file from private blob storage using the blob URL
+    // The blob URL includes auth token for private access
+    const response = await fetch(file.blobUrl);
     
-    if (!blob) {
+    if (!response.ok) {
+      console.error(`Blob fetch failed: ${response.status} ${response.statusText}`);
       return Response.json({ error: 'File not found in storage' }, { status: 404 });
     }
 
     // Return file with proper headers for download
-    return new Response(blob.stream, {
+    return new Response(response.body, {
       headers: {
         'Content-Type': file.mimeType || 'application/octet-stream',
         'Content-Disposition': `attachment; filename="${file.name}"`,
         'Content-Length': file.size.toString(),
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
   } catch (error) {
