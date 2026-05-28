@@ -145,7 +145,7 @@ export default function TransferPage() {
   const handleDownloadFile = async (file: FileRecord) => {
     try {
       const response = await fetch('/api/download', {
-        method: 'POST',
+        method: 'GET',
         headers: {
           'x-session-id': sessionId,
           'x-file-id': file.id,
@@ -153,14 +153,19 @@ export default function TransferPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = data.url;
-        a.download = data.name;
+        a.href = url;
+        a.download = file.name;
         a.click();
+        window.URL.revokeObjectURL(url);
+      } else {
+        alert('Download failed');
       }
     } catch (error) {
       console.error('Download failed:', error);
+      alert('Download failed');
     }
   };
 
