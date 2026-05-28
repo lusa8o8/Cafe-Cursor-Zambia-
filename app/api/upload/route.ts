@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Missing session ID' }, { status: 400 });
   }
 
-  const session = getSession(sessionId);
+  const session = await getSession(sessionId);
   if (!session) {
     return Response.json({ error: 'Invalid or expired session' }, { status: 404 });
   }
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       uploadedAt: Date.now(),
     };
 
-    addFileToSession(sessionId, fileRecord);
+    await addFileToSession(sessionId, fileRecord);
 
     return Response.json(fileRecord);
   } catch (error) {

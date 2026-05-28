@@ -5,9 +5,9 @@ export async function POST(request: Request) {
 
   let session = null;
   if (id) {
-    session = getSession(id);
+    session = await getSession(id);
   } else if (code) {
-    session = getSessionByCode(code);
+    session = await getSessionByCode(code);
   }
 
   if (!session) {

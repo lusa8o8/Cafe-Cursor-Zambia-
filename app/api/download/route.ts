@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Missing session or file ID' }, { status: 400 });
   }
 
-  const files = getSessionFiles(sessionId);
+  const files = await getSessionFiles(sessionId);
   const file = files.find(f => f.id === fileId);
 
   if (!file) {

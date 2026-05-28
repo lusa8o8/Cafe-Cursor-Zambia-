@@ -17,8 +17,32 @@ export interface Session {
   files: FileRecord[];
 }
 
-// In-memory session store
-const sessions = new Map<string, Session>();
+const SESSION_TTL = 15 * 60; // 15 minutes in seconds
+
+async function redis(command: string[], token?: string): Promise<any> {
+  const url = process.env.KV_REST_API_URL;
+  const bearerToken = token || process.env.KV_REST_API_TOKEN;
+
+  if (!url || !bearerToken) {
+    throw new Error('Redis credentials not configured');
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${bearerToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(command),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Redis error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.result;
+}
 
 // Generate a 6-digit numeric code
 function generateCode(): string {
@@ -26,11 +50,11 @@ function generateCode(): string {
 }
 
 // Create a new session
-export function createSession(): Session {
+export async function createSession(): Promise<Session> {
   const id = uuidv4();
   const code = generateCode();
   const now = Date.now();
-  const expiresAt = now + 15 * 60 * 1000; // 15 minutes
+  const expiresAt = now + SESSION_TTL * 1000;
 
   const session: Session = {
     id,
@@ -40,67 +64,79 @@ export function createSession(): Session {
     files: [],
   };
 
-  sessions.set(id, session);
+  // Store session with TTL
+  await redis(['SET', `session:${id}`, JSON.stringify(session), 'EX', SESSION_TTL.toString()]);
+  // Store code->id mapping with TTL
+  await redis(['SET', `code:${code}`, id, 'EX', SESSION_TTL.toString()]);
+
   return session;
 }
 
 // Get session by ID
-export function getSession(id: string): Session | null {
-  const session = sessions.get(id);
-  if (!session) return null;
-  
-  // Check if expired
-  if (Date.now() > session.expiresAt) {
-    sessions.delete(id);
+export async function getSession(id: string): Promise<Session | null> {
+  try {
+    const data = await redis(['GET', `session:${id}`]);
+    if (!data) return null;
+    return JSON.parse(data) as Session;
+  } catch {
     return null;
   }
-
-  return session;
 }
 
 // Get session by code
-export function getSessionByCode(code: string): Session | null {
-  for (const session of sessions.values()) {
-    if (session.code === code && Date.now() <= session.expiresAt) {
-      return session;
-    }
+export async function getSessionByCode(code: string): Promise<Session | null> {
+  try {
+    const id = await redis(['GET', `code:${code}`]);
+    if (!id) return null;
+    return getSession(id);
+  } catch {
+    return null;
   }
-  return null;
 }
 
 // Add file to session
-export function addFileToSession(sessionId: string, file: FileRecord): boolean {
-  const session = getSession(sessionId);
-  if (!session) return false;
+export async function addFileToSession(sessionId: string, file: FileRecord): Promise<boolean> {
+  try {
+    const session = await getSession(sessionId);
+    if (!session) return false;
 
-  session.files.push(file);
-  return true;
+    session.files.push(file);
+
+    // Update with remaining TTL
+    const ttl = Math.ceil((session.expiresAt - Date.now()) / 1000);
+    await redis(['SET', `session:${sessionId}`, JSON.stringify(session), 'EX', ttl.toString()]);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // Remove file from session
-export function removeFileFromSession(sessionId: string, fileId: string): boolean {
-  const session = getSession(sessionId);
-  if (!session) return false;
+export async function removeFileFromSession(sessionId: string, fileId: string): Promise<boolean> {
+  try {
+    const session = await getSession(sessionId);
+    if (!session) return false;
 
-  const index = session.files.findIndex(f => f.id === fileId);
-  if (index === -1) return false;
+    const index = session.files.findIndex(f => f.id === fileId);
+    if (index === -1) return false;
 
-  session.files.splice(index, 1);
-  return true;
+    session.files.splice(index, 1);
+
+    // Update with remaining TTL
+    const ttl = Math.ceil((session.expiresAt - Date.now()) / 1000);
+    await redis(['SET', `session:${sessionId}`, JSON.stringify(session), 'EX', ttl.toString()]);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // Get files in session
-export function getSessionFiles(sessionId: string): FileRecord[] {
-  const session = getSession(sessionId);
-  return session?.files || [];
-}
-
-// Cleanup expired sessions (call periodically)
-export function cleanupExpiredSessions(): void {
-  const now = Date.now();
-  for (const [id, session] of sessions.entries()) {
-    if (now > session.expiresAt) {
-      sessions.delete(id);
-    }
+export async function getSessionFiles(sessionId: string): Promise<FileRecord[]> {
+  try {
+    const session = await getSession(sessionId);
+    return session?.files || [];
+  } catch {
+    return [];
   }
 }
