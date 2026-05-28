@@ -7,7 +7,7 @@ export async function GET(request: Request) {
     return Response.json({ error: 'Missing session ID' }, { status: 400 });
   }
 
-  const files = getSessionFiles(sessionId);
+  const files = await getSessionFiles(sessionId);
   return Response.json({ files });
 }
 
@@ -19,7 +19,7 @@ export async function DELETE(request: Request) {
     return Response.json({ error: 'Missing session or file ID' }, { status: 400 });
   }
 
-  const files = getSessionFiles(sessionId);
+  const files = await getSessionFiles(sessionId);
   const file = files.find(f => f.id === fileId);
 
   if (!file) {
@@ -30,7 +30,7 @@ export async function DELETE(request: Request) {
     // Delete from Blob
     await del(file.blobUrl);
     // Remove from session
-    removeFileFromSession(sessionId, fileId);
+    await removeFileFromSession(sessionId, fileId);
     return Response.json({ success: true });
   } catch (error) {
     console.error('Delete failed:', error);
