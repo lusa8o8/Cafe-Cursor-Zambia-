@@ -68,6 +68,14 @@ export function ScannedCardSheet({
               className="h-11 rounded-full border-white/10 bg-black/10 text-[var(--cc-text)]"
             />
           </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => onOpenChange(false)}
+            className="mt-4 h-11 w-full rounded-full border border-white/10 bg-white/5 text-[var(--cc-text)] hover:bg-white/10"
+          >
+            Done
+          </Button>
         </div>
       ) : (
         <Button
