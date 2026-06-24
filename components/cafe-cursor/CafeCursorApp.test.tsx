@@ -38,6 +38,7 @@ describe('CafeCursorApp', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save contact' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Done' }))
 
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Met' })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: 'Met' }))
     await waitFor(() => expect(screen.getByText('Mwamba Builder')).toBeInTheDocument())
     expect(screen.getByText('1 person')).toBeInTheDocument()
