@@ -4,6 +4,15 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --cc-bg: #1a1916;
+  --cc-surface: #26251e;
+  --cc-surface-raised: #2f2e27;
+  --cc-text: #f2f1ed;
+  --cc-muted: rgb(242 241 237 / 55%);
+  --cc-border: rgb(242 241 237 / 8%);
+  --cc-accent: #f54e00;
+  --cc-accent-hover: #ff6b1a;
+  --cc-success: rgb(74 222 128 / 72%);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -122,4 +131,18 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+html {
+  background: var(--cc-bg);
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--cc-bg);
+}
+
+::selection {
+  background: var(--cc-accent);
+  color: white;
 }
