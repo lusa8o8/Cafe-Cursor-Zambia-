@@ -27,6 +27,8 @@ export function BottomSheet({
   onOpenChange,
   className,
 }: BottomSheetProps) {
+  if (!open) return null
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent
